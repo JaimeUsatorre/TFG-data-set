@@ -1,1 +1,386 @@
+Codigo Modelo Random Forest
+# Importamos librerías
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 
+# Cargamos los datos
+file_path = 'BBDD limpia.xlsx'
+sheet_name = 'BBDD después de la limpieza'
+df = pd.read_excel('/content/BBDD limpia.xlsx')
+
+# Visualizar variables
+print("Columnas disponibles en el DataFrame:")
+print(df.columns.tolist())
+
+# Verificamos que exista la columna 'Región'
+if 'Región' not in df.columns:
+    raise ValueError("La columna 'Región' no se encuentra en el DataFrame. Verifica el nombre de la columna.")
+
+# Pedir al usuario que introduzca la variable numérica a predecir
+target = input("Introduce el nombre de la variable numérica que deseas predecir: ")
+
+# Verificamos que la variable objetivo esté en la BBDD
+if target not in df.columns:
+    raise ValueError(f"La variable {target} no existe en el DataFrame.")
+
+# Obtener las regiones de forma única
+regiones = df['Región'].unique()
+print(f"\nSe detectaron las siguientes regiones: {regiones}\n")
+
+# Título Región
+for region in regiones:
+    print(f"Procesando la región: {region}")
+
+    # Filtramos los datos de la región
+    df_region = df[df['Región'] == region].copy()
+
+    # Verificamos que haya suficientes datos para entrenar el modelo
+    if df_region.shape[0] < 10:
+        print("Datos insuficientes para entrenar el modelo en esta región.")
+        continue
+
+    # Calculamos la media de la variable objetivo en la región
+    mean_target = df_region[target].mean()
+
+    # Definir las variables predictoras (X) y la variable objetivo (y)
+    X = df_region.drop(columns=[target, 'Región'])
+    y = df_region[target]
+
+    # Seleccionar solo columnas numéricas para X
+    X = X.select_dtypes(include=[np.number])
+
+    # Imputamos valores nulos con la media de cada columna
+    X = X.fillna(X.mean())
+    y = y.fillna(y.mean())
+
+    # División en entrenamiento (80%) y prueba (20%)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    # Entrenamos el modelo Random Forest (según parámetros por defecto)
+    rf = RandomForestRegressor(random_state=42)
+    rf.fit(X_train, y_train)
+
+    # Predicciones en el conjunto de entrenamiento y de prueba
+    y_pred_train = rf.predict(X_train)
+    y_pred_test = rf.predict(X_test)
+
+    # Calculamos métricas de dispersión/error en el conjunto de entrenamiento
+    rmse_train = np.sqrt(mean_squared_error(y_train, y_pred_train))
+    r2_train = r2_score(y_train, y_pred_train)
+    rme_train = np.mean(y_pred_train - y_train)
+    mae_train = mean_absolute_error(y_train, y_pred_train)
+    relative_error_rmse_train = (rmse_train / mean_target) * 100
+    relative_error_mae_train = (mae_train / mean_target) * 100
+
+    # Calculamos métricas de dispersión/error en el conjunto de prueba
+    rmse_test = np.sqrt(mean_squared_error(y_test, y_pred_test))
+    r2_test = r2_score(y_test, y_pred_test)
+    rme_test = np.mean(y_pred_test - y_test)
+    mae_test = mean_absolute_error(y_test, y_pred_test)
+    relative_error_rmse_test = (rmse_test / mean_target) * 100
+    relative_error_mae_test = (mae_test / mean_target) * 100
+
+    # Mostramos resultados
+    print(f"Resultados para la región {region}:")
+    print(f"Media de {target}: {mean_target}")
+    print("---- Conjunto de Entrenamiento ----")
+    print(f"RMSE: {rmse_train} ({relative_error_rmse_train:.2f}% relativo a la media)")
+    print(f"R²: {r2_train}")
+    print(f"RME: {rme_train}")
+    print(f"MAE: {mae_train} ({relative_error_mae_train:.2f}% relativo a la media)")
+    print("---- Conjunto de Prueba ----")
+    print(f"RMSE: {rmse_test} ({relative_error_rmse_test:.2f}% relativo a la media)")
+    print(f"R²: {r2_test}")
+    print(f"RME: {rme_test}")
+    print(f"MAE: {mae_test} ({relative_error_mae_test:.2f}% relativo a la media)\n")
+
+
+_____________________________________________________________________
+XG Boost
+
+# Importamos librerías
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+import xgboost as xgb
+
+# Cargamos los datos
+file_path = 'BBDD limpia.xlsx'
+sheet_name = 'BBDD después de la limpieza'
+df = pd.read_excel('/content/BBDD limpia.xlsx')
+
+# Visualizar variables
+print("Columnas disponibles en el DataFrame:")
+print(df.columns.tolist())
+
+# Verificamos que exista la columna 'Región'
+if 'Región' not in df.columns:
+    raise ValueError("La columna 'Región' no se encuentra en el DataFrame. Verifica el nombre de la columna.")
+
+# Pedir al usuario que introduzca la variable numérica a predecir
+target = input("Introduce el nombre de la variable numérica que deseas predecir: ")
+
+# Verificamos que la variable objetivo esté en la BBDD
+if target not in df.columns:
+    raise ValueError(f"La variable {target} no existe en el DataFrame.")
+
+# Obtenemos las regiones únicas
+regiones = df['Región'].unique()
+print(f"\nSe detectaron las siguientes regiones: {regiones}\n")
+
+# Obtener las regiones de forma única
+for region in regiones:
+    print(f"Procesando la región: {region}")
+
+    # Filtramos los datos de la región actual
+    df_region = df[df['Región'] == region].copy()
+
+    # Comprobamos que haya suficientes datos para entrenar
+    if df_region.shape[0] < 10:
+        print("Datos insuficientes para entrenar el modelo en esta región.")
+        continue
+
+    # Definimos las variables predictoras (X) y la variable objetivo (y)
+    X = df_region.drop(columns=[target, 'Región'])
+    y = df_region[target]
+
+    # Seleccionamos solo columnas numéricas para X
+    X = X.select_dtypes(include=[np.number])
+
+    # Verificamos que existan variables predictoras numéricas
+    if X.shape[1] == 0:
+        print(f"No hay variables predictoras numéricas disponibles para la región {region}.")
+        continue
+
+    # Rellenamos valores nulos en X y en y
+    X = X.fillna(X.mean())
+    y = y.fillna(y.mean())
+
+    # División en entrenamiento (80%) y prueba (20%)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    # Entrenamos el modelo XGBoost (según parámetros por defecto)
+    model = xgb.XGBRegressor(random_state=42)
+    model.fit(X_train, y_train)
+
+    # Realizamos predicciones sobre ambos conjuntos: entrenamiento y prueba
+    y_train_pred = model.predict(X_train)
+    y_test_pred = model.predict(X_test)
+
+    # Calculamos métricas de dispersión/error en el conjunto de entrenamiento
+    rmse_train = np.sqrt(mean_squared_error(y_train, y_train_pred))
+    r2_train = r2_score(y_train, y_train_pred)
+    rme_train = np.mean(y_train_pred - y_train)  # Error Medio (puede indicar sesgo)
+    mae_train = mean_absolute_error(y_train, y_train_pred)
+    relative_error_rmse_train = (rmse_train / y_train.mean()) * 100
+    relative_error_mae_train = (mae_train / y_train.mean()) * 100
+
+    # Calcular métricas de dispersión/error para el conjunto de prueba
+    rmse_test = np.sqrt(mean_squared_error(y_test, y_test_pred))
+    r2_test = r2_score(y_test, y_test_pred)
+    rme_test = np.mean(y_test_pred - y_test)
+    mae_test = mean_absolute_error(y_test, y_test_pred)
+    relative_error_rmse_test = (rmse_test / y_test.mean()) * 100
+    relative_error_mae_test = (mae_test / y_test.mean()) * 100
+
+    # Mostramos resultados
+    print(f"Resultados para la región {region}:")
+
+    print("\n----- Entrenamiento -----")
+    print(f"Media de {target} en train: {y_train.mean()}")
+    print(f"RMSE: {rmse_train} ({relative_error_rmse_train:.2f}% relativo a la media de train)")
+    print(f"R²: {r2_train}")
+    print(f"RME (Error Medio): {rme_train}")
+    print(f"MAE: {mae_train} ({relative_error_mae_train:.2f}% relativo a la media de train)")
+
+    print("\n----- Prueba -----")
+    print(f"Media de {target} en test: {y_test.mean()}")
+    print(f"RMSE: {rmse_test} ({relative_error_rmse_test:.2f}% relativo a la media de test)")
+    print(f"R²: {r2_test}")
+    print(f"RME (Error Medio): {rme_test}")
+    print(f"MAE: {mae_test} ({relative_error_mae_test:.2f}% relativo a la media de test)\n")
+
+
+_______________________________________________________________________
+
+# Visualización de los modelos
+
+
+# Importamos librerías necesarias
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import xgboost as xgb
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+
+# Configuramos una tipografía para todos los gráficos
+plt.rcParams["font.family"] = "DejaVu Sans"
+
+
+# 2) Cargamos los datos
+file_path = 'BBDD limpia.xlsx'
+sheet_name = 'BBDD después de la limpieza'
+df = pd.read_excel('/content/BBDD limpia.xlsx')
+
+# 3) Mostramos las columnas y pedir la variable objetivo
+print("Columnas disponibles en el DataFrame:")
+print(df.columns.tolist())
+
+if 'Región' not in df.columns:
+    raise ValueError("La columna 'Región' no se encuentra en la BBDD. Verifica el nombre de la columna.")
+
+target = input("Introduce el nombre de la variable numérica que deseas predecir: ")
+
+if target not in df.columns:
+    raise ValueError(f"La variable {target} no existe en el DataFrame.")
+
+# 4) Obtenemos las regiones únicas
+regiones = df['Región'].unique()
+print(f"\nSe detectaron las siguientes regiones: {regiones}\n")
+
+# 5) Bucle principal: entrenamos ambos modelos por región y graficamos
+for region in regiones:
+    print(f"Procesando la región: {region}")
+
+    # Filtramos la BBDD para la región actual
+    df_region = df[df['Región'] == region].copy()
+
+    # Eliminamos filas vacías para evitar errores
+    df_region = df_region.dropna(subset=[target])
+
+    # Verificamos que haya suficientes datos para entrenar
+    if df_region.shape[0] < 10:
+        print(f"Tras eliminar NaN en '{target}', no quedan suficientes datos en la región '{region}'.")
+        continue
+
+    # Calculamos la media de la variable objetivo en la región
+    mean_target = df_region[target].mean()
+
+    # Definimos X (características) e y (variable objetivo)
+    # Excluimos la columna 'Región' y la variable objetivo
+    X = df_region.drop(columns=[target, 'Región'], errors='ignore')
+    y = df_region[target]
+
+    # Seleccionamos solo columnas numéricas para X
+    X = X.select_dtypes(include=[np.number])
+
+    # Comprobamos que haya al menos una columna predictora
+    if X.shape[1] == 0:
+        print(f"No hay columnas numéricas predictoras disponibles para {target} en {region}.")
+        continue
+
+    # 6) Dividimos en entrenamiento y prueba
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    if len(y_test) == 0:
+        print(f"Sin datos de prueba para {target} en la región {region}.")
+        continue
+
+    # 7) Entrenamos el modelo Random Forest
+    rf = RandomForestRegressor(random_state=42)
+    rf.fit(X_train, y_train)
+    y_pred_rf = rf.predict(X_test)
+
+    # Métricas para Random Forest
+    rf_rmse = np.sqrt(mean_squared_error(y_test, y_pred_rf))
+    rf_mae  = mean_absolute_error(y_test, y_pred_rf)
+    rf_r2   = r2_score(y_test, y_pred_rf)
+    rf_rme  = np.mean(y_pred_rf - y_test)  # Error Medio
+    rf_rel_rmse = (rf_rmse / mean_target) * 100
+    rf_rel_mae  = (rf_mae / mean_target) * 100
+
+    # 8) Entrenamos el modelo XGBoost
+    xgb_model = xgb.XGBRegressor(random_state=42)
+    xgb_model.fit(X_train, y_train)
+    y_pred_xgb = xgb_model.predict(X_test)
+
+    # Métricas para XGBoost
+    xgb_rmse = np.sqrt(mean_squared_error(y_test, y_pred_xgb))
+    xgb_mae  = mean_absolute_error(y_test, y_pred_xgb)
+    xgb_r2   = r2_score(y_test, y_pred_xgb)
+    xgb_rme  = np.mean(y_pred_xgb - y_test)  # Error Medio
+    xgb_rel_rmse = (xgb_rmse / mean_target) * 100
+    xgb_rel_mae  = (xgb_mae / mean_target) * 100
+
+    # 9) Imprimimos los resultados en pantalla
+    print(f"Resultados para la región {region}:")
+    print(f"Media de {target}: {mean_target}")
+    print("--- Random Forest ---")
+    print(f"RMSE: {rf_rmse:.4f} ({rf_rel_rmse:.2f}% relativo a la media)")
+    print(f"R²: {rf_r2:.4f}")
+    print(f"RME: {rf_rme:.4f}")
+    print(f"MAE: {rf_mae:.4f} ({rf_rel_mae:.2f}% relativo a la media)")
+    print("--- XGBoost ---")
+    print(f"RMSE: {xgb_rmse:.4f} ({xgb_rel_rmse:.2f}% relativo a la media)")
+    print(f"R²: {xgb_r2:.4f}")
+    print(f"RME: {xgb_rme:.4f}")
+    print(f"MAE: {xgb_mae:.4f} ({xgb_rel_mae:.2f}% relativo a la media)\n")
+
+    # 10) Preparamos BBDD para graficar
+    df_test = pd.DataFrame({
+        'Real': y_test,
+        'RF': y_pred_rf,
+        'XGB': y_pred_xgb
+    }, index=y_test.index).sort_index()
+
+    # 11) Generamos gráficos en una sola figura
+    fig, axs = plt.subplots(1, 3, figsize=(18, 5))
+
+    # Subplot 1: Gráfico de líneas (Real vs. Predicciones)
+    axs[0].plot(df_test.index, df_test['Real'], label='Real', color='black', linestyle='-')
+    axs[0].plot(df_test.index, df_test['RF'], label='Random Forest', color='blue', linestyle='--')
+    axs[0].plot(df_test.index, df_test['XGB'], label='XGBoost', color='orange', linestyle=':')
+    axs[0].set_title(f'Predicción vs Real\n{target} - {region}')
+    axs[0].set_xlabel('Índice (ordenado)')
+    axs[0].set_ylabel('Valor')
+    axs[0].legend()
+
+    # Subplot 2: Gráfico de dispersión (Real vs. Predicción)
+    axs[1].scatter(df_test['Real'], df_test['RF'], alpha=0.6, color='blue', label='RF')
+    axs[1].scatter(df_test['Real'], df_test['XGB'], alpha=0.6, color='orange', label='XGB')
+    # Línea diagonal y=x
+    min_val = min(df_test['Real'].min(), df_test['RF'].min(), df_test['XGB'].min())
+    max_val = max(df_test['Real'].max(), df_test['RF'].max(), df_test['XGB'].max())
+    axs[1].plot([min_val, max_val], [min_val, max_val], color='black', linestyle='--')
+    axs[1].set_title('Real vs. Predicción')
+    axs[1].set_xlabel('Valor Real')
+    axs[1].set_ylabel('Predicción')
+    axs[1].legend()
+
+    # Subplot 3: Gráfico de barras (Comparativa de MAE y RMSE)
+    metrics = ['MAE', 'RMSE']
+    rf_values = [rf_mae, rf_rmse]
+    xgb_values = [xgb_mae, xgb_rmse]
+    x = np.arange(len(metrics))
+    width = 0.3
+
+    axs[2].bar(x - width/2, rf_values, width, label='Random Forest', color='blue')
+    axs[2].bar(x + width/2, xgb_values, width, label='XGBoost', color='orange')
+    axs[2].set_xticks(x)
+    axs[2].set_xticklabels(metrics)
+    axs[2].set_title('Comparativa de errores')
+    axs[2].set_ylabel('Error')
+    axs[2].legend()
+
+    # Título general con R²
+    plt.suptitle(
+        f'Modelos Predictivos - {target} en {region}\n'
+        f'R² RF={rf_r2:.3f} | R² XGB={xgb_r2:.3f}',
+        fontsize=12, y=1.05
+    )
+
+    plt.tight_layout()
+    plt.show()
